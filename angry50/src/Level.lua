@@ -28,6 +28,8 @@ function Level:init()
         -- if we collided between both the player and an obstacle...
         if types['Obstacle'] and types['Player'] then
 
+            self.launchMarker.canSpawnMoreAliens = false
+
             -- grab the body that belongs to the player
             local playerFixture = a:getUserData() == 'Player' and a or b
             local obstacleFixture = a:getUserData() == 'Obstacle' and a or b
@@ -59,6 +61,8 @@ function Level:init()
 
         -- if we collided between the player and the alien...
         if types['Player'] and types['Alien'] then
+
+            self.launchMarker.canSpawnMoreAliens = false
 
             -- grab the bodies that belong to the player and alien
             local playerFixture = a:getUserData() == 'Player' and a or b
@@ -172,15 +176,24 @@ function Level:update(dt)
 
     -- replace launch marker if original alien stopped moving
     if self.launchMarker.launched then
-        local xPos, yPos = self.launchMarker.alien.body:getPosition()
-        local xVel, yVel = self.launchMarker.alien.body:getLinearVelocity()
-        
-        -- if we fired our alien to the left or it's almost done rolling, respawn
-        if xPos < 0 or (math.abs(xVel) + math.abs(yVel) < 1.5) then
-            self.launchMarker.alien.body:destroy()
+       
+        local allAliensStopped = true
+        for k, alien in pairs(self.launchMarker.aliens) do
+            local xPos, yPos = alien.body:getPosition()
+            local xVel, yVel = alien.body:getLinearVelocity()
+
+            if xPos > 0 and xPos < VIRTUAL_WIDTH and (math.abs(xVel) + math.abs(yVel) >= 5) then
+                allAliensStopped = false
+            end
+        end
+
+        if allAliensStopped then
+            for k, alien in pairs(self.launchMarker.aliens) do
+                alien.body:destroy()
+            end
+
             self.launchMarker = AlienLaunchMarker(self.world)
 
-            -- re-initialize level if we have no more aliens
             if #self.aliens == 0 then
                 gStateMachine:change('start')
             end

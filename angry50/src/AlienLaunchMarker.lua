@@ -26,7 +26,10 @@ function AlienLaunchMarker:init(world)
     self.launched = false
 
     -- our alien we will eventually spawn
-    self.alien = nil
+    self.aliens = {}
+
+    --checks if the players bumps to any subject already
+    self.canSpawnMoreAliens = true
 end
 
 function AlienLaunchMarker:update(dt)
@@ -40,30 +43,64 @@ function AlienLaunchMarker:update(dt)
         -- if we click the mouse and haven't launched, show arrow preview
         if love.mouse.wasPressed(1) and not self.launched then
             self.aiming = true
-
-        -- if we release the mouse, launch an Alien
+        
+        -- if we release the mouse, launch the alien
         elseif love.mouse.wasReleased(1) and self.aiming then
             self.launched = true
 
+            -- sets up new alien and add alien to our aliens table
             -- spawn new alien in the world, passing in user data of player
-            self.alien = Alien(self.world, 'round', self.shiftedX, self.shiftedY, 'Player')
+            local alien = Alien(self.world, 'round', self.shiftedX, self.shiftedY, 'Player')
 
-            -- apply the difference between current X,Y and base X,Y as launch vector impulse
-            self.alien.body:setLinearVelocity((self.baseX - self.shiftedX) * 10, (self.baseY - self.shiftedY) * 10)
+            -- apply the diff between current X,Y and base X,Y as launch vector impulse
+            alien.body:setLinearVelocity((self.baseX - self.shiftedX) * 10, (self.baseY - self.shiftedY) * 10)
 
-            -- make the alien pretty bouncy
-            self.alien.fixture:setRestitution(0.4)
-            self.alien.body:setAngularDamping(1)
+            -- makes the alien bouncy~
+            alien.fixture:setRestitution(0,4)
+            alien.body:setAngularVelocity(1)
+
+            table.insert(self.aliens, alien)
 
             -- we're no longer aiming
             self.aiming = false
 
         -- re-render trajectory
         elseif self.aiming then
-            
+            self.rotation = self.baseY - self.shiftedY * 0.9
             self.shiftedX = math.min(self.baseX + 30, math.max(x, self.baseX - 30))
             self.shiftedY = math.min(self.baseY + 30, math.max(y, self.baseY - 30))
         end
+
+    elseif love.keyboard.wasPressed('space') and self.canSpawnMoreAliens then
+        self:addAliens()
+
+        self.canSpawnMoreAliens = false
+    end
+end
+
+-- add more aliens when clicked the spacebar
+function AlienLaunchMarker:addAliens()
+    for i = 1, 2 do
+
+        -- get x and y of the players main projectile
+        local xPos, yPos = self.aliens[1].body:getPosition()
+        
+        -- spawn new aliens
+        local alien = Alien(self.world, 'round', xPos, yPos, 'Player')
+        
+        -- apply the diff between current X,Y, and base X,Y, as launch vector impulse
+
+        if i % 2 == 0 then
+            alien.body:setLinearVelocity(((self.baseX - self.shiftedX) * 10), ((self.baseY - self.shiftedY) * 7))
+        else
+            alien.body:setLinearVelocity(((self.baseX - self.shiftedX) * 10), ((self.baseY - self.shiftedY) * 2))
+        end
+        
+        -- makes the alien bouncy~
+        alien.fixture:setRestitution(0.4)
+        alien.body:setAngularVelocity(1)
+
+        table.insert(self.aliens, alien)
     end
 end
 
@@ -101,8 +138,11 @@ function AlienLaunchMarker:render()
             end
         end
         
-        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setColor(255, 255, 255, 255)
     else
-        self.alien:render()
+        -- render all the aliens
+        for k, entity in pairs(self.aliens) do
+            entity:render()
+        end
     end
 end
